@@ -6,7 +6,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ---------------- VALIDATION ---------------- */
 
 function isValid(edge) {
     if (!edge.includes("->")) return false;
@@ -22,8 +21,6 @@ function isValid(edge) {
 
     return true;
 }
-
-/* ---------------- INPUT PROCESS ---------------- */
 
 function processInput(data) {
     const seen = new Set();
@@ -54,10 +51,9 @@ function processInput(data) {
     };
 }
 
-/* ---------------- TREE BUILD ---------------- */
 
 function buildTree(node, map, visited = new Set()) {
-    if (visited.has(node)) return {}; // prevent infinite loop
+    if (visited.has(node)) return {}; 
 
     visited.add(node);
 
@@ -71,8 +67,6 @@ function buildTree(node, map, visited = new Set()) {
 
     return obj;
 }
-
-/* ---------------- CYCLE DETECTION ---------------- */
 
 function detectCycle(node, map, visited, stack = new Set()) {
     if (stack.has(node)) return true;
@@ -91,8 +85,6 @@ function detectCycle(node, map, visited, stack = new Set()) {
     return false;
 }
 
-/* ---------------- DEPTH ---------------- */
-
 function getDepth(node) {
     let max = 1;
 
@@ -104,7 +96,6 @@ function getDepth(node) {
     return max;
 }
 
-/* ---------------- MAIN LOGIC ---------------- */
 
 function buildHierarchy(edges) {
     const parentMap = {};
@@ -121,7 +112,6 @@ function buildHierarchy(edges) {
 
     let roots = Object.keys(parentMap).filter(n => !childSet.has(n));
 
-    // 🔥 HANDLE PURE CYCLE CASE
     if (roots.length === 0 && Object.keys(parentMap).length > 0) {
         roots = [Object.keys(parentMap)[0]];
     }
@@ -155,8 +145,6 @@ function buildHierarchy(edges) {
     return { result, cycleCount };
 }
 
-/* ---------------- SUMMARY ---------------- */
-
 function generateSummary(data) {
     let maxDepth = 0;
     let largestRoot = "";
@@ -184,8 +172,6 @@ function generateSummary(data) {
     };
 }
 
-/* ---------------- API ---------------- */
-
 app.post('/bfhl', (req, res) => {
     const input = req.body.data || [];
 
@@ -203,8 +189,6 @@ app.post('/bfhl', (req, res) => {
         summary: summary
     });
 });
-
-/* ---------------- SERVER ---------------- */
 
 app.listen(3000, () => {
     console.log("Server running on port 3000");
