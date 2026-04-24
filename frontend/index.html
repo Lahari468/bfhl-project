@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BFHL Visualizer</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, #eef2f7, #dfe9f3);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .input-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        textarea {
+            width: 100%;
+            height: 140px;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .btn-group {
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .btn-analyze { background: #2ecc71; color: white; }
+        .btn-sample { background: #3498db; color: white; }
+        .btn-clear { background: #e74c3c; color: white; }
+
+        button:hover { opacity: 0.9; }
+
+        .section {
+            margin-top: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 18px;
+            border-radius: 10px;
+            margin-top: 15px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        .tree {
+            list-style: none;
+            padding-left: 20px;
+        }
+
+        .tree li {
+            position: relative;
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+
+        .tree li::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 8px;
+            border-left: 2px solid #ccc;
+            height: 100%;
+        }
+
+        .tree li::after {
+            content: "";
+            position: absolute;
+            top: 12px;
+            left: 8px;
+            border-top: 2px solid #ccc;
+            width: 12px;
+        }
+
+        .tree li:last-child::before {
+            height: 12px;
+        }
+
+        .node {
+            display: inline-block;
+            padding: 6px 10px;
+            background: #3498db;
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+
+        .loading {
+            color: #555;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>BFHL Hierarchy Visualizer</h1>
+
+    <div class="input-card">
+        <label><b>Enter Edges:</b></label>
+        <textarea id="input" placeholder="A->B&#10;A->C&#10;B->D"></textarea>
+
+        <div class="btn-group">
+            <button class="btn-analyze" onclick="sendData()">Analyze</button>
+            <button class="btn-sample" onclick="loadSample()">Sample</button>
+            <button class="btn-clear" onclick="clearAll()">Clear</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <div id="output" class="section"></div>
+
+</div>
+
+<script>
+
+function renderTree(obj) {
+    let html = "<ul class='tree'>";
+    for (let key in obj) {
+        html += `<li><span class="node">${key}</span>`;
+        if (Object.keys(obj[key]).length > 0) {
+            html += renderTree(obj[key]);
+        }
+        html += "</li>";
+    }
+    html += "</ul>";
+    return html;
+}
+
+function loadSample() {
+    document.getElementById("input").value =
+`A->B
+A->C
+B->D
+C->E`;
+}
+
+function clearAll() {
+    document.getElementById("input").value = "";
+    document.getElementById("output").innerHTML = "";
+    document.getElementById("status").innerHTML = "";
+}
+
+async function sendData() {
+    const output = document.getElementById("output");
+    const status = document.getElementById("status");
+
+    status.innerHTML = "<p class='loading'>Processing...</p>";
+    output.innerHTML = "";
+
+    try {
+        const raw = document.getElementById("input").value
+            .split("\n")
+            .map(x => x.trim())
+            .filter(x => x !== "");
+
+        const res = await fetch("http://127.0.0.1:3000/bfhl", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ data: raw })
+        });
+
+        if (!res.ok) {
+            throw new Error("Server error: " + res.status);
+        }
+
+        const data = await res.json();
+        status.innerHTML = "";
+
+        let html = "";
+
+      
+        data.hierarchies.forEach(h => {
+            html += `<div class="card">
+                        <h3>Root: <span style="color:#2ecc71">${h.root}</span></h3>`;
+
+            if (h.has_cycle) {
+                html += `<p style="color:red;">⚠ Cycle detected</p>`;
+            } else {
+                html += renderTree(h.tree);
+                html += `<p><b>Depth:</b> ${h.depth}</p>`;
+            }
+
+            html += `</div>`;
+        });
+
+        // ⚠ Invalid
+        html += `<div class="card">
+                    <h3>Invalid Entries</h3>
+                    <p>${data.invalid_entries.length ? data.invalid_entries.join(", ") : "None"}</p>
+                 </div>`;
+
+        // 🔁 Duplicate
+        html += `<div class="card">
+                    <h3>Duplicate Edges</h3>
+                    <p>${data.duplicate_edges.length ? data.duplicate_edges.join(", ") : "None"}</p>
+                 </div>`;
+
+        // 📊 Summary
+        html += `<div class="card">
+                    <h3>Summary</h3>
+                    <p>Total Trees: ${data.summary.total_trees}</p>
+                    <p>Total Cycles: ${data.summary.total_cycles}</p>
+                    <p>Largest Root: ${data.summary.largest_tree_root || "-"}</p>
+                 </div>`;
+
+        output.innerHTML = html;
+
+    } catch (err) {
+        status.innerHTML = `<p class="error">Error: ${err.message}</p>`;
+    }
+}
+
+</script>
+
+</body>
+</html>
