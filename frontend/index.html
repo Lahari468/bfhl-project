@@ -127,7 +127,7 @@
 
 <div class="container">
 
-    <h1>BFHL Hierarchy Visualizer</h1>
+    <h1>BFHL Visualizer</h1>
 
     <div class="input-card">
         <label><b>Enter Edges:</b></label>
@@ -218,19 +218,16 @@ async function sendData() {
             html += `</div>`;
         });
 
-        // ⚠ Invalid
         html += `<div class="card">
                     <h3>Invalid Entries</h3>
                     <p>${data.invalid_entries.length ? data.invalid_entries.join(", ") : "None"}</p>
                  </div>`;
 
-        // 🔁 Duplicate
         html += `<div class="card">
                     <h3>Duplicate Edges</h3>
                     <p>${data.duplicate_edges.length ? data.duplicate_edges.join(", ") : "None"}</p>
                  </div>`;
 
-        // 📊 Summary
         html += `<div class="card">
                     <h3>Summary</h3>
                     <p>Total Trees: ${data.summary.total_trees}</p>
